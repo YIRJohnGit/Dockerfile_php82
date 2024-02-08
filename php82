@@ -1,0 +1,43 @@
+# Use the official PHP 8.2 image as the base image
+FROM php:8.2
+
+# Create a non-root user
+RUN useradd -ms /bin/bash composeruser
+
+# Set the working directory
+WORKDIR /var/www/html
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y zip unzip libicu-dev && \
+    docker-php-ext-install intl mysqli
+
+# Install Vim
+RUN apt-get install -y vim
+
+# Create the necessary directories for Composer installation
+RUN mkdir -p /home/composeruser/bin
+
+# Make the installation directory writable by the user
+RUN chown -R composeruser:composeruser /home/composeruser
+
+# Install PHP Composer as the non-root user
+USER composeruser
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+    php composer-setup.php --install-dir=/home/composeruser/bin --filename=composer && \
+    php -r "unlink('composer-setup.php');"
+
+# Set the PATH variable to include Composer's bin directory
+ENV PATH="/home/composeruser/bin:${PATH}"
+
+# Switch back to root user for application code copy
+USER root
+
+# Copy your PHP file into the container
+COPY ./src/. .
+
+# Expose port 80 for web server (if needed)
+EXPOSE 80
+
+# Command to run when the container starts
+CMD ["php", "-S", "0.0.0.0:80", "-t", "/var/www/html"]]
